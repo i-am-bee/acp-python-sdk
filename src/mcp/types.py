@@ -716,6 +716,49 @@ class ToolListChangedNotification(Notification):
     method: Literal["notifications/tools/list_changed"]
     params: NotificationParams | None = None
 
+class ListAgentTemplatesRequest(PaginatedRequest):
+    """Sent from the client to request a list of agent templates the server has."""
+
+    method: Literal["tools/list"]
+    params: RequestParams | None = None
+
+
+class AgentTemplate(BaseModel):
+    """Definition for a tool the client can call."""
+
+    """The name of the agent template."""
+    name: str
+    """The description of the agent template."""
+    description: str | None = None
+
+
+class ListAgentTemplatesResult(PaginatedResult):
+    """The server's response to a agents/templates/list request from the client."""
+
+    agentTemplates: list[AgentTemplate]
+
+
+class RunAgentRequestParams(RequestParams):
+    """Parameters for running an agent."""
+
+    name: str
+    prompt: str
+    tools: list[str]
+    model_config = ConfigDict(extra="allow")
+
+
+class RunAgentRequest(Request):
+    """Used by the client to invoke an agent provided by the server."""
+
+    method: Literal["agents/run"]
+    params: RunAgentRequestParams
+
+
+class RunAgentResult(Result):
+    """The server's response to an agent run."""
+
+    text: str
+
 
 LoggingLevel = Literal[
     "debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"
@@ -1027,6 +1070,8 @@ class ClientRequest(
         | UnsubscribeRequest
         | CallToolRequest
         | ListToolsRequest
+        | ListAgentTemplatesRequest
+        | RunAgentRequest
     ]
 ):
     pass

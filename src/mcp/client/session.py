@@ -243,3 +243,28 @@ class ClientSession(
                 )
             )
         )
+
+    async def list_agent_templates(self) -> types.ListAgentTemplatesResult:
+        """Send a agents/templates/list request."""
+        return await self.send_request(
+            types.ClientRequest(
+                types.ListAgentTemplatesRequest(
+                    method="agents/templates/list",
+                )
+            ),
+            types.ListAgentTemplatesResult,
+        )
+
+    async def run_agent(
+        self, name: str, prompt: str, tools: list[str]
+    ) -> types.RunAgentResult:
+        """Send a agents/run request."""
+        return await self.send_request(
+            types.ClientRequest(
+                types.RunAgentRequest(
+                    method="agents/run",
+                    params=types.RunAgentRequestParams(name=name, prompt=prompt, tools=tools),
+                )
+            ),
+            types.RunAgentResult,
+        )
