@@ -256,14 +256,14 @@ class ClientSession(
         )
 
     async def run_agent(
-        self, name: str, prompt: str, tools: list[str]
+        self, name: str, prompt: str, config: dict | None = None
     ) -> types.RunAgentResult:
         """Send a agents/run request."""
         return await self.send_request(
             types.ClientRequest(
                 types.RunAgentRequest(
                     method="agents/run",
-                    params=types.RunAgentRequestParams(name=name, prompt=prompt, tools=tools),
+                    params=types.RunAgentRequestParams(name=name, prompt=prompt, config=config),
                 )
             ),
             types.RunAgentResult,

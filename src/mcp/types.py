@@ -719,7 +719,7 @@ class ToolListChangedNotification(Notification):
 class ListAgentTemplatesRequest(PaginatedRequest):
     """Sent from the client to request a list of agent templates the server has."""
 
-    method: Literal["tools/list"]
+    method: Literal["agents/templates/list"]
     params: RequestParams | None = None
 
 
@@ -730,6 +730,8 @@ class AgentTemplate(BaseModel):
     name: str
     """The description of the agent template."""
     description: str | None = None
+    """A JSON Schema object defining the expected parameters for the tool."""
+    configSchema: dict[str, Any]
 
 
 class ListAgentTemplatesResult(PaginatedResult):
@@ -743,7 +745,7 @@ class RunAgentRequestParams(RequestParams):
 
     name: str
     prompt: str
-    tools: list[str]
+    config: dict[str, Any] | None = None
     model_config = ConfigDict(extra="allow")
 
 
