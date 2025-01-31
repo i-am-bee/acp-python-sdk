@@ -95,11 +95,12 @@ class NotificationOptions:
         prompts_changed: bool = False,
         resources_changed: bool = False,
         tools_changed: bool = False,
+        agents_changed: bool = False
     ):
         self.prompts_changed = prompts_changed
         self.resources_changed = resources_changed
         self.tools_changed = tools_changed
-
+        self.agents_changed = agents_changed
 
 class Server:
     def __init__(
@@ -155,6 +156,7 @@ class Server:
         prompts_capability = None
         resources_capability = None
         tools_capability = None
+        agents_capability = None
         logging_capability = None
 
         # Set prompt capabilities if handler exists
@@ -175,6 +177,12 @@ class Server:
                 listChanged=notification_options.tools_changed
             )
 
+        # Set tool capabilities if handler exists
+        if types.ListAgentTemplatesRequest in self.request_handlers:
+            agents_capability = types.AgentsCapability(
+                listChanged=notification_options.agents_changed
+            )
+
         # Set logging capabilities if handler exists
         if types.SetLevelRequest in self.request_handlers:
             logging_capability = types.LoggingCapability()
@@ -183,6 +191,7 @@ class Server:
             prompts=prompts_capability,
             resources=resources_capability,
             tools=tools_capability,
+            agents=agents_capability,
             logging=logging_capability,
             experimental=experimental_capabilities,
         )
@@ -385,6 +394,52 @@ class Server:
                     )
 
             self.request_handlers[types.CallToolRequest] = handler
+            return func
+
+        return decorator
+    
+
+    def list_agent_templates(self):
+        def decorator(func: Callable[[], Awaitable[list[types.AgentTemplate]]]):
+            logger.debug("Registering handler for ListAgentTemplatesRequest")
+
+            async def handler(_: Any):
+                templates = await func()
+                return types.ServerResult(types.ListAgentTemplatesResult(agentTemplates=templates))
+
+            self.request_handlers[types.ListAgentTemplatesRequest] = handler
+            return func
+
+        return decorator
+
+    def run_agent(self):
+        def decorator(
+            func: Callable[
+                ...,
+                Awaitable[
+                    Sequence[
+                        types.TextContent | types.ImageContent | types.EmbeddedResource
+                    ]
+                ],
+            ],
+        ):
+            logger.debug("Registering handler for RunAgentRequest")
+
+            async def handler(req: types.RunAgentRequest):
+                try:
+                    results = await func(req.params.name, (req.params.config or {}))
+                    return types.ServerResult(
+                        types.RunAgentResult(content=list(results), isError=False)
+                    )
+                except Exception as e:
+                    return types.ServerResult(
+                        types.RunAgentResult(
+                            content=[types.TextContent(type="text", text=str(e))],
+                            isError=True,
+                        )
+                    )
+
+            self.request_handlers[types.RunAgentRequest] = handler
             return func
 
         return decorator

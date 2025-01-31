@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from pydantic.networks import AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from mcp.server.fastmcp.agents import AgentManager
 from mcp.server.fastmcp.exceptions import ResourceError
 from mcp.server.fastmcp.prompts import Prompt, PromptManager
 from mcp.server.fastmcp.resources import FunctionResource, Resource, ResourceManager
@@ -45,6 +46,9 @@ from mcp.types import (
 )
 from mcp.types import (
     Tool as MCPTool,
+)
+from mcp.types import (
+    AgentTemplate as MCPAgentTemplate,
 )
 
 logger = get_logger(__name__)
@@ -80,6 +84,9 @@ class Settings(BaseSettings):
     # prompt settings
     warn_on_duplicate_prompts: bool = True
 
+    # agent settings
+    warn_on_duplicate_agents: bool = True
+
     dependencies: list[str] = Field(
         default_factory=list,
         description="List of dependencies to install in the server environment",
@@ -100,6 +107,9 @@ class FastMCP:
         )
         self._prompt_manager = PromptManager(
             warn_on_duplicate_prompts=self.settings.warn_on_duplicate_prompts
+        )
+        self._agent_manager = AgentManager(
+            warn_on_duplicate_agents=self.settings.warn_on_duplicate_agents
         )
         self.dependencies = self.settings.dependencies
 
@@ -141,6 +151,8 @@ class FastMCP:
         self._mcp_server.list_prompts()(self.list_prompts)
         self._mcp_server.get_prompt()(self.get_prompt)
         self._mcp_server.list_resource_templates()(self.list_resource_templates)
+        self._mcp_server.list_agent_templates()(self.list_agent_templates)
+        self._mcp_server.run_agent()(self.run_agent)
 
     async def list_tools(self) -> list[MCPTool]:
         """List all available tools."""
@@ -212,6 +224,26 @@ class FastMCP:
         except Exception as e:
             logger.error(f"Error reading resource {uri}: {e}")
             raise ResourceError(str(e))
+        
+    async def list_agent_templates(self) -> list[MCPAgentTemplate]:
+        templates = self._agent_manager.list_templates()
+        return [
+            MCPAgentTemplate(
+                name=template.name,
+                description=template.description,
+                configSchema=template.parameters
+            )
+            for template in templates
+        ]
+        
+    async def run_agent(
+        self, name: str, arguments: dict
+    ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+        """Call a tool by name with arguments."""
+        context = self.get_context()
+        result = await self._agent_manager.run_agent(name, arguments, context=context)
+        converted_result = _convert_to_content(result)
+        return converted_result
 
     def add_tool(
         self,
@@ -424,6 +456,46 @@ class FastMCP:
             prompt = Prompt.from_function(func, name=name, description=description)
             self.add_prompt(prompt)
             return func
+
+        return decorator
+
+    def add_agent(
+        self,
+        fn: Callable,
+        name: str | None = None,
+        description: str | None = None) -> None:
+        """Add a agent to the server.
+
+        The tool function can optionally request a Context object by adding a parameter
+        with the Context type annotation. See the @agent decorator for examples.
+
+        Args:
+            fn: The function to register as an agent
+            name: Optional name for the agent (defaults to function name)
+            description: Optional description of what the agent does
+        """
+        self._agent_manager.add_template(fn, name=name, description=description)
+
+    def agent(self, name: str | None = None, description: str | None = None) -> Callable:
+        """Decorator to register an agent.
+
+        Agents can optionally request a Context object by adding a parameter with the
+        Context type annotation. The context provides access to MCP capabilities like
+        logging, progress reporting, and resource access.
+
+        Args:
+            name: Optional name for the agent (defaults to function name)
+            description: Optional description of what the tool does
+        """
+        if callable(name):
+            raise TypeError(
+                "The @agent decorator was used incorrectly. "
+                "Did you forget to call it? Use @agent() instead of @agent"
+            )
+
+        def decorator(fn: Callable) -> Callable:
+            self.add_agent(fn, name=name, description=description)
+            return fn
 
         return decorator
 

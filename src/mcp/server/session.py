@@ -288,3 +288,13 @@ class ServerSession(
                 )
             )
         )
+
+    async def send_agents_list_changed(self) -> None:
+        """Send a agent list changed notification."""
+        await self.send_notification(
+            types.ServerNotification(
+                types.AgentListChangedNotification(
+                    method="notifications/agents/list_changed",
+                )
+            )
+        )

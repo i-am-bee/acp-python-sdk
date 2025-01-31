@@ -17,5 +17,9 @@ class ToolError(FastMCPError):
     """Error in tool operations."""
 
 
+class AgentError(FastMCPError):
+    """Error in agent operations."""
+
+
 class InvalidSignature(Exception):
     """Invalid signature for use with FastMCP."""

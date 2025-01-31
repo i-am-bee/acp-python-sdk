@@ -236,6 +236,14 @@ class ToolsCapability(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class AgentsCapability(BaseModel):
+    """Capability for tools operations."""
+
+    listChanged: bool | None = None
+    """Whether this server supports notifications for changes to the tool list."""
+    model_config = ConfigDict(extra="allow")
+
+
 class LoggingCapability(BaseModel):
     """Capability for logging operations."""
 
@@ -255,6 +263,8 @@ class ServerCapabilities(BaseModel):
     """Present if the server offers any resources to read."""
     tools: ToolsCapability | None = None
     """Present if the server offers any tools to call."""
+    agents: AgentsCapability | None = None
+    """Present if the server offers any agents to run."""
     model_config = ConfigDict(extra="allow")
 
 
@@ -759,7 +769,18 @@ class RunAgentRequest(Request):
 class RunAgentResult(Result):
     """The server's response to an agent run."""
 
-    text: str
+    content: list[TextContent | ImageContent | EmbeddedResource]
+    isError: bool = False
+
+
+class AgentListChangedNotification(Notification):
+    """
+    An optional notification from the server to the client, informing it that the list
+    of agents it offers has changed.
+    """
+
+    method: Literal["notifications/agents/list_changed"]
+    params: NotificationParams | None = None
 
 
 LoggingLevel = Literal[
@@ -1107,6 +1128,7 @@ class ServerNotification(
         | ResourceListChangedNotification
         | ToolListChangedNotification
         | PromptListChangedNotification
+        | AgentListChangedNotification
     ]
 ):
     pass
@@ -1124,6 +1146,8 @@ class ServerResult(
         | ReadResourceResult
         | CallToolResult
         | ListToolsResult
+        | ListAgentTemplatesResult
+        | RunAgentResult
     ]
 ):
     pass
