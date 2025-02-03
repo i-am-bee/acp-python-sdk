@@ -43,11 +43,11 @@ class AgentManager:
         return template
 
     async def run_agent(
-        self, name: str, arguments: dict, context: "Context | None" = None
+        self, name: str, config: dict, prompt: str, context: "Context | None" = None
     ) -> Any:
         """Call a agent by name with arguments."""
         template = self.get_template(name)
         if not template:
             raise AgentError(f"Unknown agent: {name}")
 
-        return await template.fn(arguments, context=context)
+        return await template.fn(config=config, prompt=prompt, context=context)
