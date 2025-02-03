@@ -406,7 +406,7 @@ class Server:
 
             async def handler(req: types.RunAgentRequest):
                 try:
-                    results = await func(req.params.name, (req.params.config or {}))
+                    results = await func(req.params.name, (req.params.config or {}), req.params.prompt)
                     return types.ServerResult(
                         types.RunAgentResult(content=list(results), isError=False)
                     )

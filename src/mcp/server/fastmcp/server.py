@@ -233,11 +233,11 @@ class FastMCP:
         ]
         
     async def run_agent(
-        self, name: str, arguments: dict
+        self, name: str, config: dict, prompt: str
     ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
-        """Call a tool by name with arguments."""
+        """Run an agent by name with arguments."""
         context = self.get_context()
-        result = await self._agent_manager.run_agent(name, arguments, context=context)
+        result = await self._agent_manager.run_agent(name, config, prompt, context=context)
         converted_result = _convert_to_content(result)
         return converted_result
 
