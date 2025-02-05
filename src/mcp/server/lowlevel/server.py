@@ -176,7 +176,7 @@ class Server:
                 listChanged=notification_options.tools_changed
             )
 
-        # Set tool capabilities if handler exists
+        # Set agent capabilities if handler exists
         if types.ListAgentTemplatesRequest in self.request_handlers:
             agents_capability = types.AgentsCapability(
                 listChanged=notification_options.agents_changed
@@ -379,14 +379,49 @@ class Server:
     
 
     def list_agent_templates(self):
-        def decorator(func: Callable[[], Awaitable[list[types.AgentTemplate]]]):
+        def decorator(func: Callable[[types.ListAgentTemplatesRequest], Awaitable[types.ListAgentTemplatesResult]]):
             logger.debug("Registering handler for ListAgentTemplatesRequest")
 
-            async def handler(_: Any):
-                templates = await func()
-                return types.ServerResult(types.ListAgentTemplatesResult(agentTemplates=templates))
+            async def handler(req: types.ListAgentTemplatesRequest):
+                return types.ServerResult(await func(req))
 
             self.request_handlers[types.ListAgentTemplatesRequest] = handler
+            return func
+
+        return decorator
+    
+    def list_agents(self):
+        def decorator(func: Callable[[types.ListAgentsRequest], Awaitable[types.ListAgentsResult]]):
+            logger.debug("Registering handler for ListAgentsRequest")
+
+            async def handler(req: types.ListAgentsRequest):
+                return types.ServerResult(await func(req))
+
+            self.request_handlers[types.ListAgentsRequest] = handler
+            return func
+
+        return decorator
+    
+    def create_agent(self):
+        def decorator(func: Callable[[types.CreateAgentRequest], Awaitable[types.CreateAgentResult]]):
+            logger.debug("Registering handler for CreateAgentRequest")
+
+            async def handler(req: types.CreateAgentRequest):
+                return types.ServerResult(await func(req))
+
+            self.request_handlers[types.CreateAgentRequest] = handler
+            return func
+
+        return decorator
+    
+    def destroy_agent(self):
+        def decorator(func: Callable[[types.DestroyAgentRequest], Awaitable[types.DestroyAgentResult]]):
+            logger.debug("Registering handler for DestroyAgentRequest")
+
+            async def handler(req: types.DestroyAgentRequest):
+                return types.ServerResult(await func(req))
+
+            self.request_handlers[types.DestroyAgentRequest] = handler
             return func
 
         return decorator
@@ -395,28 +430,16 @@ class Server:
         def decorator(
             func: Callable[
                 ...,
-                Awaitable[
-                    Sequence[
-                        types.TextContent | types.ImageContent | types.EmbeddedResource
-                    ]
-                ],
+                Awaitable[Any],
             ],
         ):
             logger.debug("Registering handler for RunAgentRequest")
 
             async def handler(req: types.RunAgentRequest):
-                try:
-                    results = await func(req.params.name, (req.params.config or {}), req.params.prompt)
-                    return types.ServerResult(
-                        types.RunAgentResult(content=list(results), isError=False)
-                    )
-                except Exception as e:
-                    return types.ServerResult(
-                        types.RunAgentResult(
-                            content=[types.TextContent(type="text", text=str(e))],
-                            isError=True,
-                        )
-                    )
+                output = await func(req.params.name, (req.params.input or {}))
+                return types.ServerResult(
+                    types.RunAgentResult(output=output)
+                )
 
             self.request_handlers[types.RunAgentRequest] = handler
             return func

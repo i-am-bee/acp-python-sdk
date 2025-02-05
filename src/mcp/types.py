@@ -236,10 +236,13 @@ class ToolsCapability(BaseModel):
 
 
 class AgentsCapability(BaseModel):
-    """Capability for tools operations."""
+    """Capability for agents operations."""
 
+    """Whether this server supports agent templates."""
+    templates: bool | None = None
+    """Whether this server supports notifications for changes to the agent list."""
     listChanged: bool | None = None
-    """Whether this server supports notifications for changes to the tool list."""
+
     model_config = ConfigDict(extra="allow")
 
 
@@ -725,22 +728,29 @@ class ToolListChangedNotification(Notification):
     method: Literal["notifications/tools/list_changed"]
     params: NotificationParams | None = None
 
-class ListAgentTemplatesRequest(PaginatedRequest):
-    """Sent from the client to request a list of agent templates the server has."""
-
-    method: Literal["agents/templates/list"]
-    params: RequestParams | None = None
-
 
 class AgentTemplate(BaseModel):
-    """Definition for a tool the client can call."""
+    """Definition for an agent template."""
 
     """The name of the agent template."""
     name: str
     """The description of the agent template."""
     description: str | None = None
-    """A JSON Schema object defining the expected parameters for the tool."""
+    """A JSON Schema object defining the expected agent config."""
     configSchema: dict[str, Any]
+    """A JSON Schema object defining the expected agent run input."""
+    inputSchema: dict[str, Any]
+    """A JSON Schema object defining the expected agent run output."""
+    outputSchema: dict[str, Any]
+
+    model_config = ConfigDict(extra="allow")
+
+
+class ListAgentTemplatesRequest(PaginatedRequest):
+    """Sent from the client to request a list of agent templates the server has."""
+
+    method: Literal["agents/templates/list"]
+    params: RequestParams | None = None
 
 
 class ListAgentTemplatesResult(PaginatedResult):
@@ -749,13 +759,82 @@ class ListAgentTemplatesResult(PaginatedResult):
     agentTemplates: list[AgentTemplate]
 
 
+class Agent(BaseModel):
+    """Definition for an agent."""
+
+    """The name of the agent."""
+    name: str
+    """The description of the agent."""
+    description: str | None = None
+    """A JSON Schema object defining the expected agent run input."""
+    inputSchema: dict[str, Any]
+    """A JSON Schema object defining the expected agent run output."""
+    outputSchema: dict[str, Any]
+
+    model_config = ConfigDict(extra="allow")
+
+
+class ListAgentsRequest(PaginatedRequest):
+    """Sent from the client to request a list of agents the server has."""
+
+    method: Literal["agents/list"]
+    params: RequestParams | None = None
+
+
+class ListAgentsResult(PaginatedResult):
+    """The server's response to a agents/list request from the client."""
+
+    agents: list[Agent]
+
+
+class CreateAgentRequestParams(RequestParams):
+    """Parameters for creating an agent."""
+
+    """The name of the agent template."""
+    templateName: str
+    """The configuration of the agent."""
+    config: dict[str, Any]
+
+
+class CreateAgentRequest(Request):
+    """Used by the client to create an agent."""
+
+    method: Literal["agents/create"]
+    params: CreateAgentRequestParams
+
+
+class CreateAgentResult(Result):
+    """The server's response to an agent creation."""
+
+    agent: Agent
+
+
+class DestroyAgentRequestParams(RequestParams):
+    """Parameters for destroying an agent."""
+
+    """The name of the agent."""
+    name: str
+
+
+class DestroyAgentRequest(Request):
+    """Used by the client to destroy an agent."""
+
+    method: Literal["agents/destroy"]
+    params: DestroyAgentRequestParams
+
+
+class DestroyAgentResult(Result):
+    """The server's response to an agent destruction."""
+    pass
+
+
 class RunAgentRequestParams(RequestParams):
     """Parameters for running an agent."""
 
+    """The name of the agent."""
     name: str
-    prompt: str
-    config: dict[str, Any] | None = None
-    model_config = ConfigDict(extra="allow")
+    """The input for the agent."""
+    input: dict[str, Any]
 
 
 class RunAgentRequest(Request):
@@ -768,8 +847,26 @@ class RunAgentRequest(Request):
 class RunAgentResult(Result):
     """The server's response to an agent run."""
 
-    content: list[TextContent | ImageContent | EmbeddedResource]
-    isError: bool = False
+    """The output for the agent."""
+    output: dict[str, Any]
+
+
+class AgentRunProgressNotificationParams(NotificationParams):
+    """Parameters for agent run progress notifications."""
+
+    """
+    The progress token which was given in the initial request, used to associate this
+    notification with the request that is proceeding.
+    """
+    progressToken: ProgressToken
+
+    """The output delta for the agent."""
+    delta: dict[str, Any]
+
+
+class AgentRunProgressNotification(Notification):
+    method: Literal["notifications/agents/run/progress"]
+    params: AgentRunProgressNotificationParams
 
 
 class AgentListChangedNotification(Notification):
@@ -1093,6 +1190,9 @@ class ClientRequest(
         | CallToolRequest
         | ListToolsRequest
         | ListAgentTemplatesRequest
+        | ListAgentsRequest
+        | CreateAgentRequest
+        | DestroyAgentRequest
         | RunAgentRequest
     ]
 ):
@@ -1128,6 +1228,7 @@ class ServerNotification(
         | ToolListChangedNotification
         | PromptListChangedNotification
         | AgentListChangedNotification
+        | AgentRunProgressNotification
     ]
 ):
     pass
@@ -1146,6 +1247,9 @@ class ServerResult(
         | CallToolResult
         | ListToolsResult
         | ListAgentTemplatesResult
+        | ListAgentsResult
+        | CreateAgentResult
+        | DestroyAgentResult
         | RunAgentResult
     ]
 ):

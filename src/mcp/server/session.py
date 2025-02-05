@@ -289,11 +289,25 @@ class ServerSession(
         )
 
     async def send_agents_list_changed(self) -> None:
-        """Send a agent list changed notification."""
+        """Send an agent list changed notification."""
         await self.send_notification(
             types.ServerNotification(
                 types.AgentListChangedNotification(
                     method="notifications/agents/list_changed",
+                )
+            )
+        )
+
+    async def send_agent_run_progress(self, progress_token: str | int, delta: dict[str, Any]) -> None:
+        """Send an agent run progress notification."""
+        await self.send_notification(
+            types.ServerNotification(
+                types.AgentRunProgressNotification(
+                    method="notifications/agents/run/progress",
+                    params=types.AgentRunProgressNotificationParams(
+                        progressToken=progress_token,
+                        delta=delta
+                    )
                 )
             )
         )
