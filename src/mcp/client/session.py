@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Any
 
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from pydantic import AnyUrl
@@ -254,16 +255,59 @@ class ClientSession(
             ),
             types.ListAgentTemplatesResult,
         )
+    
+    async def list_agents(self) -> types.ListAgentsResult:
+        """Send a agents/list request."""
+        return await self.send_request(
+            types.ClientRequest(
+                types.ListAgentsRequest(
+                    method="agents/list",
+                )
+            ),
+            types.ListAgentsResult,
+        )
+    
+    async def create_agent(self, template_name: str, config: dict[str, Any]) -> types.CreateAgentResult:
+        """Send a agents/create request."""
+        return await self.send_request(
+            types.ClientRequest(
+                types.CreateAgentRequest(
+                    method="agents/create",
+                    params=types.CreateAgentRequestParams(
+                        templateName=template_name,
+                        config=config,
+                    )
+                )
+            ),
+            types.CreateAgentResult,
+        )
+    
+    async def destroy_agent(self, name: str) -> types.DestroyAgentResult:
+        """Send a agents/destroy request."""
+        return await self.send_request(
+            types.ClientRequest(
+                types.DestroyAgentRequest(
+                    method="agents/destroy",
+                    params=types.DestroyAgentRequestParams(
+                        name=name
+                    )
+                )
+            ),
+            types.DestroyAgentResult,
+        )
 
     async def run_agent(
-        self, name: str, prompt: str, config: dict | None = None
+        self, name: str, input: dict[str, Any]
     ) -> types.RunAgentResult:
         """Send a agents/run request."""
         return await self.send_request(
             types.ClientRequest(
                 types.RunAgentRequest(
                     method="agents/run",
-                    params=types.RunAgentRequestParams(name=name, prompt=prompt, config=config),
+                    params=types.RunAgentRequestParams(
+                        name=name,
+                        input=input
+                    )
                 )
             ),
             types.RunAgentResult,

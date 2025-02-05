@@ -1,6 +1,6 @@
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from mcp.server.fastmcp.agents.base import Agent
 from mcp.server.fastmcp.agents.templates import AgentTemplate
 from mcp.server.fastmcp.exceptions import AgentError
 from mcp.server.fastmcp.utilities.logging import get_logger
@@ -15,39 +15,97 @@ class AgentManager:
     """Manages FastMCP agents."""
 
     def __init__(self, warn_on_duplicate_agents: bool = True):
+        self._agents: dict[str, Agent] = {}
         self._templates: dict[str, AgentTemplate] = {}
         self.warn_on_duplicate_agents = warn_on_duplicate_agents
 
     def get_template(self, name: str) -> AgentTemplate | None:
-        """Get agent by name."""
+        """Get agent template by name."""
         return self._templates.get(name)
-
+    
     def list_templates(self) -> list[AgentTemplate]:
         """List all registered agent templates."""
         return list(self._templates.values())
-
+    
     def add_template(
         self,
-        fn: Callable,
-        name: str | None = None,
-        description: str | None = None,
+        template: AgentTemplate,
     ) -> AgentTemplate:
         """Add a template to the server."""
-        template = AgentTemplate.from_function(fn, name=name, description=description)
         existing = self._templates.get(template.name)
         if existing:
             if self.warn_on_duplicate_agents:
-                logger.warning(f"Agent already exists: {template.name}")
+                logger.warning(f"Agent template already exists: {template.name}")
             return existing
         self._templates[template.name] = template
         return template
+    
+    def get_agent(self, name: str) -> Agent | None:
+        """Get agent by name."""
+        return self._agents.get(name)
 
-    async def run_agent(
-        self, name: str, config: dict, prompt: str, context: "Context | None" = None
-    ) -> Any:
-        """Call a agent by name with arguments."""
+    def list_agents(self) -> list[Agent]:
+        """List all registered agents."""
+        return list(self._agents.values())
+    
+    def add_agent(
+        self,
+        agent: Agent,
+    ) -> Agent:
+        """Add an agent to the server."""
+        existing = self._agents.get(agent.name)
+        if existing:
+            if self.warn_on_duplicate_agents:
+                logger.warning(f"Agent already exists: {agent.name}")
+            return existing
+        self._agents[agent.name] = agent
+        return agent
+    
+    async def create_agent(
+        self, name: str, config: dict[str, Any], context: Context
+    ) -> Agent:
+        """Call an agent by name with arguments."""
         template = self.get_template(name)
         if not template:
+            raise AgentError(f"Unknown agent template: {name}")
+
+        agent = await template.create_fn(config, context)
+        existing = self._agents.get(agent.name)
+        if existing:
+            if self.warn_on_duplicate_agents:
+                logger.warning(f"Agent already exists: {agent.name}")
+            return existing
+        self._agents[agent.name] = agent
+        return agent
+    
+    async def destroy_agent(
+        self, name: str, context: Context
+    ) -> None:
+        """Call an agent by name with arguments."""
+        agent = self.get_agent(name)
+        if not agent:
+            raise AgentError(f"Unknown agent: {name}")
+        
+        if not agent.destroy_fn:
+            raise AgentError(f"Agent cannot be destroyed: {name}")
+        
+        try:
+            await agent.destroy_fn(context)
+        except Exception as e:
+            logger.warning(f"Error destroying agent {name}: {e}")
+        finally:
+            del self._agents[name]
+        return
+
+    async def run_agent(
+        self, name: str, input: dict[str, Any], context: Context
+    ) -> Any:
+        """Run an agent by name with input."""
+        agent = self.get_agent(name)
+        if not agent:
             raise AgentError(f"Unknown agent: {name}")
 
-        return await template.fn(config=config, prompt=prompt, context=context)
+        try:
+            return await agent.run_fn(input, context)
+        except Exception as e:
+            raise AgentError(f"Error running agent {name}: {e}") from e

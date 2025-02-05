@@ -4,7 +4,7 @@ import inspect
 import json
 import re
 from itertools import chain
-from typing import Any, Callable, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence, Type
 
 import anyio
 import pydantic_core
@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from pydantic.networks import AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from mcp.server.fastmcp.agents import AgentManager
+from mcp.server.fastmcp.agents import AgentManager, AgentTemplate, Agent
 from mcp.server.fastmcp.exceptions import ResourceError
 from mcp.server.fastmcp.prompts import Prompt, PromptManager
 from mcp.server.fastmcp.resources import FunctionResource, Resource, ResourceManager
@@ -49,6 +49,17 @@ from mcp.types import (
 )
 from mcp.types import (
     AgentTemplate as MCPAgentTemplate,
+    ListAgentTemplatesRequest,
+    ListAgentTemplatesResult,
+    Agent as MCPAgent,
+    ListAgentsRequest,
+    ListAgentsResult,
+    CreateAgentRequest,
+    CreateAgentResult,
+    DestroyAgentRequest,
+    DestroyAgentResult,
+    RunAgentRequest,
+    RunAgentResult
 )
 
 logger = get_logger(__name__)
@@ -152,6 +163,9 @@ class FastMCP:
         self._mcp_server.get_prompt()(self.get_prompt)
         self._mcp_server.list_resource_templates()(self.list_resource_templates)
         self._mcp_server.list_agent_templates()(self.list_agent_templates)
+        self._mcp_server.list_agents()(self.list_agents)
+        self._mcp_server.create_agent()(self.create_agent)
+        self._mcp_server.destroy_agent()(self.destroy_agent)
         self._mcp_server.run_agent()(self.run_agent)
 
     async def list_tools(self) -> list[MCPTool]:
@@ -224,26 +238,6 @@ class FastMCP:
         except Exception as e:
             logger.error(f"Error reading resource {uri}: {e}")
             raise ResourceError(str(e))
-        
-    async def list_agent_templates(self) -> list[MCPAgentTemplate]:
-        templates = self._agent_manager.list_templates()
-        return [
-            MCPAgentTemplate(
-                name=template.name,
-                description=template.description,
-                configSchema=template.parameters
-            )
-            for template in templates
-        ]
-        
-    async def run_agent(
-        self, name: str, config: dict, prompt: str
-    ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
-        """Run an agent by name with arguments."""
-        context = self.get_context()
-        result = await self._agent_manager.run_agent(name, config, prompt, context=context)
-        converted_result = _convert_to_content(result)
-        return converted_result
 
     def add_tool(
         self,
@@ -285,6 +279,12 @@ class FastMCP:
             def tool_with_context(x: int, ctx: Context) -> str:
                 ctx.info(f"Processing {x}")
                 return str(x)
+
+            @server.agent_template(config_schema, input_schema, output_schema, delta_schema)
+            def create_agent(config) -> str:
+                def run(input) -> Output:
+                    ...
+                return run
 
             @server.tool()
             async def async_tool(x: int, context: Context) -> str:
@@ -458,46 +458,151 @@ class FastMCP:
             return func
 
         return decorator
+    
+    def add_agent_template(
+        self,
+        template: AgentTemplate
+    ) -> None:
+        """Add a agent to the server."""
 
+        self._agent_manager.add_template(template=template)
+
+    
+    def agent_template(
+        self,
+        name: str,
+        description: str,
+        config: Type[BaseModel],
+        input: Type[BaseModel],
+        output: Type[BaseModel]
+    ) -> Callable:
+        """Decorator to register an agent template.
+
+        Args:
+            name: name for the agent 
+            description: description of what the agent does
+            config: agent configuration model
+            input: agent run input model
+            output: agent run output model
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(name):
+            raise TypeError(
+                "The @agent_template decorator was used incorrectly. "
+                "Did you forget to call it? Use @agent_template() instead of @agent_template"
+            )
+
+        def decorator(func: Callable) -> Callable:
+            template = AgentTemplate(
+                name=name,
+                description=description,
+                config=config,
+                input=input,
+                output=output,
+                create_fn=func
+            )
+            self.add_agent_template(template)
+            return func
+
+        return decorator
+    
+    async def list_agent_templates(self, req: ListAgentTemplatesRequest) -> ListAgentTemplatesResult:
+        templates = self._agent_manager.list_templates()
+        return ListAgentTemplatesResult(
+            agentTemplates=[MCPAgentTemplate(
+                name=template.name,
+                description=template.description,
+                configSchema=template.config.model_json_schema(),
+                inputSchema=template.input.model_json_schema(),
+                outputSchema=template.output.model_json_schema()
+            ) for template in templates]
+        )
+    
     def add_agent(
         self,
-        fn: Callable,
-        name: str | None = None,
-        description: str | None = None) -> None:
-        """Add a agent to the server.
+        agent: Agent
+    ) -> None:
+        """Add a agent to the server."""
+        self._agent_manager.add_agent(agent=agent)
 
-        The tool function can optionally request a Context object by adding a parameter
-        with the Context type annotation. See the @agent decorator for examples.
-
-        Args:
-            fn: The function to register as an agent
-            name: Optional name for the agent (defaults to function name)
-            description: Optional description of what the agent does
-        """
-        self._agent_manager.add_template(fn, name=name, description=description)
-
-    def agent(self, name: str | None = None, description: str | None = None) -> Callable:
+    
+    def agent(
+        self,
+        name: str,
+        description: str,
+        input: Type[BaseModel],
+        output: Type[BaseModel]
+    ) -> Callable:
         """Decorator to register an agent.
 
-        Agents can optionally request a Context object by adding a parameter with the
-        Context type annotation. The context provides access to MCP capabilities like
-        logging, progress reporting, and resource access.
-
         Args:
-            name: Optional name for the agent (defaults to function name)
-            description: Optional description of what the tool does
+            name: name for the agent 
+            description: description of what the agent does
+            input: agent run input model
+            output: agent run output model
         """
+        # Check if user passed function directly instead of calling decorator
         if callable(name):
             raise TypeError(
                 "The @agent decorator was used incorrectly. "
                 "Did you forget to call it? Use @agent() instead of @agent"
             )
 
-        def decorator(fn: Callable) -> Callable:
-            self.add_agent(fn, name=name, description=description)
-            return fn
+        def decorator(func: Callable) -> Callable:
+            agent = Agent(
+                name=name,
+                description=description,
+                input=input,
+                output=output,
+                run_fn=func,
+                destroy_fn=None
+            )
+            self.add_agent(agent=agent)
+            return func
 
         return decorator
+    
+    async def list_agents(self, req: ListAgentsRequest) -> ListAgentsResult:
+        agents = self._agent_manager.list_agents()
+        return ListAgentsResult(
+            agents=[MCPAgent(
+                name=agent.name,
+                description=agent.description,
+                inputSchema=agent.input.model_json_schema(),
+                outputSchema=agent.output.model_json_schema()
+            ) for agent in agents]
+        )
+    
+    async def create_agent(self, req: CreateAgentRequest) -> CreateAgentResult:
+        agent = await self._agent_manager.create_agent(
+            name=req.params.templateName,
+            config=req.params.config,
+            context=self.get_context()
+        )
+        return CreateAgentResult(
+            agent=MCPAgent(
+                name=agent.name,
+                description=agent.description,
+                inputSchema=agent.input.model_json_schema(),
+                outputSchema=agent.output.model_json_schema()
+            )
+        )
+    
+    async def destroy_agent(self, req: DestroyAgentRequest) -> DestroyAgentResult:
+        await self._agent_manager.destroy_agent(
+            name=req.params.name,
+            context=self.get_context()
+        )
+        return DestroyAgentResult()
+        
+    async def run_agent(self, req: RunAgentRequest) -> RunAgentResult:
+        """Run an agent by name with arguments."""
+        output = await self._agent_manager.run_agent(
+            name=req.params.name,
+            input=req.params.input,
+            context=self.get_context()
+        )
+        return RunAgentResult(output=output)
 
     async def run_stdio_async(self) -> None:
         """Run the server using stdio transport."""
@@ -682,6 +787,28 @@ class Context(BaseModel):
 
         await self.request_context.session.send_progress_notification(
             progress_token=progress_token, progress=progress, total=total
+        )
+
+    async def report_agent_run_progress(
+        self, delta: dict[str, Any]
+    ) -> None:
+        """Report progress for the agent run operation.
+
+        Args:
+            delta: partial run output
+        """
+
+        progress_token = (
+            self.request_context.meta.progressToken
+            if self.request_context.meta
+            else None
+        )
+
+        if not progress_token:
+            return
+
+        await self.request_context.session.send_agent_run_progress(
+            progress_token=progress_token, delta=delta
         )
 
     async def read_resource(self, uri: str | AnyUrl) -> ReadResourceContents:
