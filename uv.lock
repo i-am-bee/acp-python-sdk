@@ -4,14 +4,6 @@ requires-python = ">=3.10"
 [options]
 resolution-mode = "lowest-direct"
 
-[manifest]
-members = [
-    "mcp",
-    "mcp-simple-prompt",
-    "mcp-simple-resource",
-    "mcp-simple-tool",
-]
-
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -78,7 +70,7 @@ name = "click"
 version = "8.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/45/2b/7ebad1e59a99207d417c0784f7fb67893465eef84b5b47c788324f1b4095/click-8.1.0.tar.gz", hash = "sha256:977c213473c7665d3aa092b41ff12063227751c41d7b17165013e10069cc5cd2", size = 329986 }
 wheels = [
@@ -197,6 +189,7 @@ dependencies = [
     { name = "anyio" },
     { name = "httpx" },
     { name = "httpx-sse" },
+    { name = "opentelemetry-api" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "sse-starlette" },
@@ -228,6 +221,7 @@ requires-dist = [
     { name = "anyio", specifier = ">=4.5" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "httpx-sse", specifier = ">=0.4" },
+    { name = "opentelemetry-api", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.10.1,<3.0.0" },
     { name = "pydantic-settings", specifier = ">=2.6.1" },
     { name = "python-dotenv", marker = "extra == 'cli'", specifier = ">=1.0.0" },
@@ -249,105 +243,6 @@ dev = [
 ]
 
 [[package]]
-name = "mcp-simple-prompt"
-version = "0.1.0"
-source = { editable = "examples/servers/simple-prompt" }
-dependencies = [
-    { name = "anyio" },
-    { name = "click" },
-    { name = "httpx" },
-    { name = "mcp" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anyio", specifier = ">=4.5" },
-    { name = "click", specifier = ">=8.1.0" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "mcp", editable = "." },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pyright", specifier = ">=1.1.378" },
-    { name = "pytest", specifier = ">=8.3.3" },
-    { name = "ruff", specifier = ">=0.6.9" },
-]
-
-[[package]]
-name = "mcp-simple-resource"
-version = "0.1.0"
-source = { editable = "examples/servers/simple-resource" }
-dependencies = [
-    { name = "anyio" },
-    { name = "click" },
-    { name = "httpx" },
-    { name = "mcp" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anyio", specifier = ">=4.5" },
-    { name = "click", specifier = ">=8.1.0" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "mcp", editable = "." },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pyright", specifier = ">=1.1.378" },
-    { name = "pytest", specifier = ">=8.3.3" },
-    { name = "ruff", specifier = ">=0.6.9" },
-]
-
-[[package]]
-name = "mcp-simple-tool"
-version = "0.1.0"
-source = { editable = "examples/servers/simple-tool" }
-dependencies = [
-    { name = "anyio" },
-    { name = "click" },
-    { name = "httpx" },
-    { name = "mcp" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anyio", specifier = ">=4.5" },
-    { name = "click", specifier = ">=8.1.0" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "mcp", editable = "." },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pyright", specifier = ">=1.1.378" },
-    { name = "pytest", specifier = ">=8.3.3" },
-    { name = "ruff", specifier = ">=0.6.9" },
-]
-
-[[package]]
 name = "mdurl"
 version = "0.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -363,6 +258,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/43/16/fc88b08840de0e0a72a2f9d8c6bae36be573e475a6326ae854bcc549fc45/nodeenv-1.9.1.tar.gz", hash = "sha256:6ec12890a2dab7946721edbfbcd91f3319c6ccc9aec47be7c7e6b7011ee6645f", size = 47437 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d2/1d/1b658dbd2b9fa9c4c9f32accbfc0205d532c8c6194dc0f2a4c0428e7128a/nodeenv-1.9.1-py2.py3-none-any.whl", hash = "sha256:ba11c9782d29c27c70ffbdda2d7415098754709be8a7056d79a737cd901155c9", size = 22314 },
+]
+
+[[package]]
+name = "opentelemetry-api"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/23/35b5b9646b1651bdf8ca09e487764588e6e4ffd8308ce6be49ab93fd73d7/opentelemetry-api-1.0.0.tar.gz", hash = "sha256:29822d15faed865a9edf7b52c38925389b3ad738ab6d656b0fe96018bc1d0cad", size = 32386 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/3e/ea0337959b334b4a70bdaec38b2538c4f625dba63e02f78b06c5d20e7b05/opentelemetry_api-1.0.0-py3-none-any.whl", hash = "sha256:dadb927bad78be7190357e0874389b2037b9312f2477dee997545483e88a2016", size = 37071 },
 ]
 
 [[package]]

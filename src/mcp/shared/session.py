@@ -8,6 +8,10 @@ import httpx
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from pydantic import BaseModel
 
+from opentelemetry import trace
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.baggage.propagation import W3CBaggagePropagator
+
 from mcp.shared.exceptions import McpError
 from mcp.types import (
     ClientNotification,
@@ -148,28 +152,37 @@ class BaseSession(
             **request.model_dump(by_alias=True, mode="json", exclude_none=True),
         )
 
-        # TODO: Support progress callbacks
+        with trace.get_tracer(__name__).start_as_current_span(jsonrpc_request.method):
+            meta = jsonrpc_request.params.get("_meta", {}) if jsonrpc_request.params is not None else {}
+            W3CBaggagePropagator().inject(meta)
+            TraceContextTextMapPropagator().inject(meta)
+            if jsonrpc_request.params is None:
+                jsonrpc_request.params = {}
+            jsonrpc_request.params['_meta'] = meta
 
-        await self._write_stream.send(JSONRPCMessage(jsonrpc_request))
 
-        try:
-            with anyio.fail_after(
-                None
-                if self._read_timeout_seconds is None
-                else self._read_timeout_seconds.total_seconds()
-            ):
-                response_or_error = await response_stream_reader.receive()
-        except TimeoutError:
-            raise McpError(
-                ErrorData(
-                    code=httpx.codes.REQUEST_TIMEOUT,
-                    message=(
-                        f"Timed out while waiting for response to "
-                        f"{request.__class__.__name__}. Waited "
-                        f"{self._read_timeout_seconds} seconds."
-                    ),
+            # TODO: Support progress callbacks
+
+            await self._write_stream.send(JSONRPCMessage(jsonrpc_request))
+
+            try:
+                with anyio.fail_after(
+                    None
+                    if self._read_timeout_seconds is None
+                    else self._read_timeout_seconds.total_seconds()
+                ):
+                    response_or_error = await response_stream_reader.receive()
+            except TimeoutError:
+                raise McpError(
+                    ErrorData(
+                        code=httpx.codes.REQUEST_TIMEOUT,
+                        message=(
+                            f"Timed out while waiting for response to "
+                            f"{request.__class__.__name__}. Waited "
+                            f"{self._read_timeout_seconds} seconds."
+                        ),
+                    )
                 )
-            )
 
         if isinstance(response_or_error, JSONRPCError):
             raise McpError(response_or_error.error)
@@ -228,7 +241,12 @@ class BaseSession(
                         session=self,
                     )
 
-                    await self._received_request(responder)
+                    ctx = TraceContextTextMapPropagator().extract(carrier=responder.request_meta)
+                    ctx = W3CBaggagePropagator().extract(responder.request_meta, context=ctx)
+
+                    with trace.get_tracer(__name__).start_span(validated_request.root.method, context=ctx, kind=trace.SpanKind.SERVER):
+                        await self._received_request(responder)
+
                     if not responder._responded:
                         await self._incoming_message_stream_writer.send(responder)
                 elif isinstance(message.root, JSONRPCNotification):
