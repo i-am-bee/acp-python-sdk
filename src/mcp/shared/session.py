@@ -320,11 +320,13 @@ class BaseSession(
                         on_complete=lambda r: self._in_flight.pop(r.request_id, None),
                     )
 
+
+                    meta = responder.request_meta.model_dump() if responder.request_meta else {}
                     ctx = TraceContextTextMapPropagator().extract(
-                        carrier=responder.request_meta
+                        carrier=meta
                     )
                     ctx = W3CBaggagePropagator().extract(
-                        responder.request_meta, context=ctx
+                        carrier=meta, context=ctx
                     )
                     with trace.get_tracer(__name__).start_span(
                         validated_request.root.method,

@@ -62,7 +62,7 @@ class AgentManager:
         return agent
 
     async def create_agent(
-        self, name: str, config: dict[str, Any], context: Context
+        self, name: str, config: dict[str, Any], context: "Context"
     ) -> Agent:
         """Call an agent by name with arguments."""
         template = self.get_template(name)
@@ -78,7 +78,7 @@ class AgentManager:
         self._agents[agent.name] = agent
         return agent
 
-    async def destroy_agent(self, name: str, context: Context) -> None:
+    async def destroy_agent(self, name: str, context: "Context") -> None:
         """Call an agent by name with arguments."""
         agent = self.get_agent(name)
         if not agent:
@@ -96,7 +96,7 @@ class AgentManager:
         return
 
     async def run_agent(
-        self, name: str, input: dict[str, Any], context: Context
+        self, name: str, input: dict[str, Any], context: "Context"
     ) -> Any:
         """Run an agent by name with input."""
         agent = self.get_agent(name)

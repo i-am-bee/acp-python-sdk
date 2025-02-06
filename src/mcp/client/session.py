@@ -4,56 +4,127 @@ from typing import Any
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from pydantic import AnyUrl
 
-import mcp.types as types
+from mcp.types import (
+    LATEST_PROTOCOL_VERSION,
+    CallToolRequest,
+    CallToolRequestParams,
+    CallToolResult,
+    CancelledNotification,
+    ClientCapabilities,
+    ClientNotification,
+    ClientRequest,
+    ClientResult,
+    CompleteRequest,
+    CompleteRequestParams,
+    CompleteResult,
+    CompletionArgument,
+    CreateAgentRequest,
+    CreateAgentRequestParams,
+    CreateAgentResult,
+    DestroyAgentRequest,
+    DestroyAgentRequestParams,
+    DestroyAgentResult,
+    EmptyResult,
+    ErrorData,
+    GetPromptRequest,
+    GetPromptRequestParams,
+    GetPromptResult,
+    Implementation,
+    InitializeRequest,
+    InitializeRequestParams,
+    InitializeResult,
+    InitializedNotification,
+    JSONRPCError,
+    JSONRPCMessage,
+    JSONRPCNotification,
+    JSONRPCRequest,
+    JSONRPCResponse,
+    ListAgentTemplatesRequest,
+    ListAgentTemplatesResult,
+    ListAgentsRequest,
+    ListAgentsResult,
+    ListPromptsRequest,
+    ListPromptsResult,
+    ListResourceTemplatesRequest,
+    ListResourceTemplatesResult,
+    ListResourcesRequest,
+    ListResourcesResult,
+    ListToolsRequest,
+    ListToolsResult,
+    PingRequest,
+    ProgressNotification,
+    ProgressNotificationParams,
+    PromptReference,
+    ReadResourceRequest,
+    ReadResourceRequestParams,
+    ReadResourceResult,
+    RequestParams,
+    ResourceReference,
+    RootsCapability,
+    RootsListChangedNotification,
+    RunAgentRequest,
+    RunAgentRequestParams,
+    RunAgentResult,
+    ServerNotification,
+    ServerRequest,
+    ServerResult,
+    SetLevelRequest,
+    SetLevelRequestParams,
+    SubscribeRequest,
+    SubscribeRequestParams,
+    UnsubscribeRequest,
+    UnsubscribeRequestParams,
+    LoggingLevel
+)
 from mcp.shared.session import BaseSession
 from mcp.shared.version import SUPPORTED_PROTOCOL_VERSIONS
 
 
 class ClientSession(
     BaseSession[
-        types.ClientRequest,
-        types.ClientNotification,
-        types.ClientResult,
-        types.ServerRequest,
-        types.ServerNotification,
+        ClientRequest,
+        ClientNotification,
+        ClientResult,
+        ServerRequest,
+        ServerNotification,
     ]
 ):
     def __init__(
         self,
-        read_stream: MemoryObjectReceiveStream[types.JSONRPCMessage | Exception],
-        write_stream: MemoryObjectSendStream[types.JSONRPCMessage],
+        read_stream: MemoryObjectReceiveStream[JSONRPCMessage | Exception],
+        write_stream: MemoryObjectSendStream[JSONRPCMessage],
         read_timeout_seconds: timedelta | None = None,
     ) -> None:
         super().__init__(
             read_stream,
             write_stream,
-            types.ServerRequest,
-            types.ServerNotification,
+            ServerRequest,
+            ServerNotification,
             read_timeout_seconds=read_timeout_seconds,
         )
 
-    async def initialize(self) -> types.InitializeResult:
+    async def initialize(self) -> InitializeResult:
         result = await self.send_request(
-            types.ClientRequest(
-                types.InitializeRequest(
+            ClientRequest(
+                InitializeRequest(
                     method="initialize",
-                    params=types.InitializeRequestParams(
-                        protocolVersion=types.LATEST_PROTOCOL_VERSION,
-                        capabilities=types.ClientCapabilities(
+                    params=InitializeRequestParams(
+                        protocolVersion=LATEST_PROTOCOL_VERSION,
+                        capabilities=ClientCapabilities(
                             sampling=None,
                             experimental=None,
-                            roots=types.RootsCapability(
+                            roots=RootsCapability(
                                 # TODO: Should this be based on whether we
                                 # _will_ send notifications, or only whether
                                 # they're supported?
                                 listChanged=True
                             ),
                         ),
-                        clientInfo=types.Implementation(name="mcp", version="0.1.0"),
+                        clientInfo=Implementation(name="mcp", version="0.1.0"),
                     ),
                 )
             ),
-            types.InitializeResult,
+            InitializeResult,
         )
 
         if result.protocolVersion not in SUPPORTED_PROTOCOL_VERSIONS:
@@ -63,22 +134,22 @@ class ClientSession(
             )
 
         await self.send_notification(
-            types.ClientNotification(
-                types.InitializedNotification(method="notifications/initialized")
+            ClientNotification(
+                InitializedNotification(method="notifications/initialized")
             )
         )
 
         return result
 
-    async def send_ping(self) -> types.EmptyResult:
+    async def send_ping(self) -> EmptyResult:
         """Send a ping request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.PingRequest(
+            ClientRequest(
+                PingRequest(
                     method="ping",
                 )
             ),
-            types.EmptyResult,
+            EmptyResult,
         )
 
     async def send_progress_notification(
@@ -86,10 +157,10 @@ class ClientSession(
     ) -> None:
         """Send a progress notification."""
         await self.send_notification(
-            types.ClientNotification(
-                types.ProgressNotification(
+            ClientNotification(
+                ProgressNotification(
                     method="notifications/progress",
-                    params=types.ProgressNotificationParams(
+                    params=ProgressNotificationParams(
                         progressToken=progress_token,
                         progress=progress,
                         total=total,
@@ -98,212 +169,212 @@ class ClientSession(
             )
         )
 
-    async def set_logging_level(self, level: types.LoggingLevel) -> types.EmptyResult:
+    async def set_logging_level(self, level: LoggingLevel) -> EmptyResult:
         """Send a logging/setLevel request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.SetLevelRequest(
+            ClientRequest(
+                SetLevelRequest(
                     method="logging/setLevel",
-                    params=types.SetLevelRequestParams(level=level),
+                    params=SetLevelRequestParams(level=level),
                 )
             ),
-            types.EmptyResult,
+            EmptyResult,
         )
 
-    async def list_resources(self) -> types.ListResourcesResult:
+    async def list_resources(self) -> ListResourcesResult:
         """Send a resources/list request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.ListResourcesRequest(
+            ClientRequest(
+                ListResourcesRequest(
                     method="resources/list",
                 )
             ),
-            types.ListResourcesResult,
+            ListResourcesResult,
         )
 
-    async def list_resource_templates(self) -> types.ListResourceTemplatesResult:
+    async def list_resource_templates(self) -> ListResourceTemplatesResult:
         """Send a resources/templates/list request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.ListResourceTemplatesRequest(
+            ClientRequest(
+                ListResourceTemplatesRequest(
                     method="resources/templates/list",
                 )
             ),
-            types.ListResourceTemplatesResult,
+            ListResourceTemplatesResult,
         )
 
-    async def read_resource(self, uri: AnyUrl) -> types.ReadResourceResult:
+    async def read_resource(self, uri: AnyUrl) -> ReadResourceResult:
         """Send a resources/read request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.ReadResourceRequest(
+            ClientRequest(
+                ReadResourceRequest(
                     method="resources/read",
-                    params=types.ReadResourceRequestParams(uri=uri),
+                    params=ReadResourceRequestParams(uri=uri),
                 )
             ),
-            types.ReadResourceResult,
+            ReadResourceResult,
         )
 
-    async def subscribe_resource(self, uri: AnyUrl) -> types.EmptyResult:
+    async def subscribe_resource(self, uri: AnyUrl) -> EmptyResult:
         """Send a resources/subscribe request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.SubscribeRequest(
+            ClientRequest(
+                SubscribeRequest(
                     method="resources/subscribe",
-                    params=types.SubscribeRequestParams(uri=uri),
+                    params=SubscribeRequestParams(uri=uri),
                 )
             ),
-            types.EmptyResult,
+            EmptyResult,
         )
 
-    async def unsubscribe_resource(self, uri: AnyUrl) -> types.EmptyResult:
+    async def unsubscribe_resource(self, uri: AnyUrl) -> EmptyResult:
         """Send a resources/unsubscribe request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.UnsubscribeRequest(
+            ClientRequest(
+                UnsubscribeRequest(
                     method="resources/unsubscribe",
-                    params=types.UnsubscribeRequestParams(uri=uri),
+                    params=UnsubscribeRequestParams(uri=uri),
                 )
             ),
-            types.EmptyResult,
+            EmptyResult,
         )
 
     async def call_tool(
         self, name: str, arguments: dict | None = None
-    ) -> types.CallToolResult:
+    ) -> CallToolResult:
         """Send a tools/call request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.CallToolRequest(
+            ClientRequest(
+                CallToolRequest(
                     method="tools/call",
-                    params=types.CallToolRequestParams(name=name, arguments=arguments),
+                    params=CallToolRequestParams(name=name, arguments=arguments),
                 )
             ),
-            types.CallToolResult,
+            CallToolResult,
         )
 
-    async def list_prompts(self) -> types.ListPromptsResult:
+    async def list_prompts(self) -> ListPromptsResult:
         """Send a prompts/list request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.ListPromptsRequest(
+            ClientRequest(
+                ListPromptsRequest(
                     method="prompts/list",
                 )
             ),
-            types.ListPromptsResult,
+            ListPromptsResult,
         )
 
     async def get_prompt(
         self, name: str, arguments: dict[str, str] | None = None
-    ) -> types.GetPromptResult:
+    ) -> GetPromptResult:
         """Send a prompts/get request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.GetPromptRequest(
+            ClientRequest(
+                GetPromptRequest(
                     method="prompts/get",
-                    params=types.GetPromptRequestParams(name=name, arguments=arguments),
+                    params=GetPromptRequestParams(name=name, arguments=arguments),
                 )
             ),
-            types.GetPromptResult,
+            GetPromptResult,
         )
 
     async def complete(
-        self, ref: types.ResourceReference | types.PromptReference, argument: dict
-    ) -> types.CompleteResult:
+        self, ref: ResourceReference | PromptReference, argument: dict
+    ) -> CompleteResult:
         """Send a completion/complete request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.CompleteRequest(
+            ClientRequest(
+                CompleteRequest(
                     method="completion/complete",
-                    params=types.CompleteRequestParams(
+                    params=CompleteRequestParams(
                         ref=ref,
-                        argument=types.CompletionArgument(**argument),
+                        argument=CompletionArgument(**argument),
                     ),
                 )
             ),
-            types.CompleteResult,
+            CompleteResult,
         )
 
-    async def list_tools(self) -> types.ListToolsResult:
+    async def list_tools(self) -> ListToolsResult:
         """Send a tools/list request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.ListToolsRequest(
+            ClientRequest(
+                ListToolsRequest(
                     method="tools/list",
                 )
             ),
-            types.ListToolsResult,
+            ListToolsResult,
         )
 
     async def send_roots_list_changed(self) -> None:
         """Send a roots/list_changed notification."""
         await self.send_notification(
-            types.ClientNotification(
-                types.RootsListChangedNotification(
+            ClientNotification(
+                RootsListChangedNotification(
                     method="notifications/roots/list_changed",
                 )
             )
         )
 
-    async def list_agent_templates(self) -> types.ListAgentTemplatesResult:
+    async def list_agent_templates(self) -> ListAgentTemplatesResult:
         """Send a agents/templates/list request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.ListAgentTemplatesRequest(
+            ClientRequest(
+                ListAgentTemplatesRequest(
                     method="agents/templates/list",
                 )
             ),
-            types.ListAgentTemplatesResult,
+            ListAgentTemplatesResult,
         )
 
-    async def list_agents(self) -> types.ListAgentsResult:
+    async def list_agents(self) -> ListAgentsResult:
         """Send a agents/list request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.ListAgentsRequest(
+            ClientRequest(
+                ListAgentsRequest(
                     method="agents/list",
                 )
             ),
-            types.ListAgentsResult,
+            ListAgentsResult,
         )
 
     async def create_agent(
         self, template_name: str, config: dict[str, Any]
-    ) -> types.CreateAgentResult:
+    ) -> CreateAgentResult:
         """Send a agents/create request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.CreateAgentRequest(
+            ClientRequest(
+                CreateAgentRequest(
                     method="agents/create",
-                    params=types.CreateAgentRequestParams(
+                    params=CreateAgentRequestParams(
                         templateName=template_name,
                         config=config,
                     ),
                 )
             ),
-            types.CreateAgentResult,
+            CreateAgentResult,
         )
 
-    async def destroy_agent(self, name: str) -> types.DestroyAgentResult:
+    async def destroy_agent(self, name: str) -> DestroyAgentResult:
         """Send a agents/destroy request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.DestroyAgentRequest(
+            ClientRequest(
+                DestroyAgentRequest(
                     method="agents/destroy",
-                    params=types.DestroyAgentRequestParams(name=name),
+                    params=DestroyAgentRequestParams(name=name),
                 )
             ),
-            types.DestroyAgentResult,
+            DestroyAgentResult,
         )
 
-    async def run_agent(self, name: str, input: dict[str, Any]) -> types.RunAgentResult:
+    async def run_agent(self, name: str, input: dict[str, Any]) -> RunAgentResult:
         """Send a agents/run request."""
         return await self.send_request(
-            types.ClientRequest(
-                types.RunAgentRequest(
+            ClientRequest(
+                RunAgentRequest(
                     method="agents/run",
-                    params=types.RunAgentRequestParams(name=name, input=input),
+                    params=RunAgentRequestParams(name=name, input=input),
                 )
             ),
-            types.RunAgentResult,
+            RunAgentResult,
         )
