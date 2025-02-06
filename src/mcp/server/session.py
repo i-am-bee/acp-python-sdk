@@ -299,16 +299,17 @@ class ServerSession(
             )
         )
 
-    async def send_agent_run_progress(self, progress_token: str | int, delta: dict[str, Any]) -> None:
+    async def send_agent_run_progress(
+        self, progress_token: str | int, delta: dict[str, Any]
+    ) -> None:
         """Send an agent run progress notification."""
         await self.send_notification(
             types.ServerNotification(
                 types.AgentRunProgressNotification(
                     method="notifications/agents/run/progress",
                     params=types.AgentRunProgressNotificationParams(
-                        progressToken=progress_token,
-                        delta=delta
-                    )
+                        progressToken=progress_token, delta=delta
+                    ),
                 )
             )
         )

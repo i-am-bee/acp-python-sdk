@@ -2,8 +2,8 @@ from typing import Any, Awaitable, Callable, Type
 
 from pydantic import BaseModel, Field
 
-from mcp.server.fastmcp.server import Context
 from mcp.server.fastmcp.agents.base import Agent
+from mcp.server.fastmcp.server import Context
 
 
 class AgentTemplate(BaseModel):
@@ -16,5 +16,6 @@ class AgentTemplate(BaseModel):
     input: Type[BaseModel] = Field(description="Model for run input")
     output: Type[BaseModel] = Field(description="Model for run output")
 
-    create_fn: Callable[[dict[str, Any], Context], Awaitable[Agent]] = Field(exclude=True)
-    
+    create_fn: Callable[[dict[str, Any], Context], Awaitable[Agent]] = Field(
+        exclude=True
+    )

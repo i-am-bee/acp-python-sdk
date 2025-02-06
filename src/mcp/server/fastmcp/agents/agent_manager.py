@@ -22,11 +22,11 @@ class AgentManager:
     def get_template(self, name: str) -> AgentTemplate | None:
         """Get agent template by name."""
         return self._templates.get(name)
-    
+
     def list_templates(self) -> list[AgentTemplate]:
         """List all registered agent templates."""
         return list(self._templates.values())
-    
+
     def add_template(
         self,
         template: AgentTemplate,
@@ -39,7 +39,7 @@ class AgentManager:
             return existing
         self._templates[template.name] = template
         return template
-    
+
     def get_agent(self, name: str) -> Agent | None:
         """Get agent by name."""
         return self._agents.get(name)
@@ -47,7 +47,7 @@ class AgentManager:
     def list_agents(self) -> list[Agent]:
         """List all registered agents."""
         return list(self._agents.values())
-    
+
     def add_agent(
         self,
         agent: Agent,
@@ -60,7 +60,7 @@ class AgentManager:
             return existing
         self._agents[agent.name] = agent
         return agent
-    
+
     async def create_agent(
         self, name: str, config: dict[str, Any], context: Context
     ) -> Agent:
@@ -77,18 +77,16 @@ class AgentManager:
             return existing
         self._agents[agent.name] = agent
         return agent
-    
-    async def destroy_agent(
-        self, name: str, context: Context
-    ) -> None:
+
+    async def destroy_agent(self, name: str, context: Context) -> None:
         """Call an agent by name with arguments."""
         agent = self.get_agent(name)
         if not agent:
             raise AgentError(f"Unknown agent: {name}")
-        
+
         if not agent.destroy_fn:
             raise AgentError(f"Agent cannot be destroyed: {name}")
-        
+
         try:
             await agent.destroy_fn(context)
         except Exception as e:

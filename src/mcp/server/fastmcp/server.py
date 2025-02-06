@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from pydantic.networks import AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from mcp.server.fastmcp.agents import AgentManager, AgentTemplate, Agent
+from mcp.server.fastmcp.agents import Agent, AgentManager, AgentTemplate
 from mcp.server.fastmcp.exceptions import ResourceError
 from mcp.server.fastmcp.prompts import Prompt, PromptManager
 from mcp.server.fastmcp.resources import FunctionResource, Resource, ResourceManager
@@ -26,10 +26,26 @@ from mcp.server.sse import SseServerTransport
 from mcp.server.stdio import stdio_server
 from mcp.shared.context import RequestContext
 from mcp.types import (
+    Agent as MCPAgent,
+)
+from mcp.types import (
+    AgentTemplate as MCPAgentTemplate,
+)
+from mcp.types import (
     AnyFunction,
+    CreateAgentRequest,
+    CreateAgentResult,
+    DestroyAgentRequest,
+    DestroyAgentResult,
     EmbeddedResource,
     GetPromptResult,
     ImageContent,
+    ListAgentsRequest,
+    ListAgentsResult,
+    ListAgentTemplatesRequest,
+    ListAgentTemplatesResult,
+    RunAgentRequest,
+    RunAgentResult,
     TextContent,
 )
 from mcp.types import (
@@ -46,20 +62,6 @@ from mcp.types import (
 )
 from mcp.types import (
     Tool as MCPTool,
-)
-from mcp.types import (
-    AgentTemplate as MCPAgentTemplate,
-    ListAgentTemplatesRequest,
-    ListAgentTemplatesResult,
-    Agent as MCPAgent,
-    ListAgentsRequest,
-    ListAgentsResult,
-    CreateAgentRequest,
-    CreateAgentResult,
-    DestroyAgentRequest,
-    DestroyAgentResult,
-    RunAgentRequest,
-    RunAgentResult
 )
 
 logger = get_logger(__name__)
@@ -280,12 +282,6 @@ class FastMCP:
                 ctx.info(f"Processing {x}")
                 return str(x)
 
-            @server.agent_template(config_schema, input_schema, output_schema, delta_schema)
-            def create_agent(config) -> str:
-                def run(input) -> Output:
-                    ...
-                return run
-
             @server.tool()
             async def async_tool(x: int, context: Context) -> str:
                 await context.report_progress(50, 100)
@@ -458,28 +454,24 @@ class FastMCP:
             return func
 
         return decorator
-    
-    def add_agent_template(
-        self,
-        template: AgentTemplate
-    ) -> None:
+
+    def add_agent_template(self, template: AgentTemplate) -> None:
         """Add a agent to the server."""
 
         self._agent_manager.add_template(template=template)
 
-    
     def agent_template(
         self,
         name: str,
         description: str,
         config: Type[BaseModel],
         input: Type[BaseModel],
-        output: Type[BaseModel]
+        output: Type[BaseModel],
     ) -> Callable:
         """Decorator to register an agent template.
 
         Args:
-            name: name for the agent 
+            name: name for the agent
             description: description of what the agent does
             config: agent configuration model
             input: agent run input model
@@ -489,7 +481,8 @@ class FastMCP:
         if callable(name):
             raise TypeError(
                 "The @agent_template decorator was used incorrectly. "
-                "Did you forget to call it? Use @agent_template() instead of @agent_template"
+                "Did you forget to call it? Use @agent_template()" + 
+                " instead of @agent_template"
             )
 
         def decorator(func: Callable) -> Callable:
@@ -499,44 +492,45 @@ class FastMCP:
                 config=config,
                 input=input,
                 output=output,
-                create_fn=func
+                create_fn=func,
             )
             self.add_agent_template(template)
             return func
 
         return decorator
-    
-    async def list_agent_templates(self, req: ListAgentTemplatesRequest) -> ListAgentTemplatesResult:
+
+    async def list_agent_templates(
+        self, req: ListAgentTemplatesRequest
+    ) -> ListAgentTemplatesResult:
         templates = self._agent_manager.list_templates()
         return ListAgentTemplatesResult(
-            agentTemplates=[MCPAgentTemplate(
-                name=template.name,
-                description=template.description,
-                configSchema=template.config.model_json_schema(),
-                inputSchema=template.input.model_json_schema(),
-                outputSchema=template.output.model_json_schema()
-            ) for template in templates]
+            agentTemplates=[
+                MCPAgentTemplate(
+                    name=template.name,
+                    description=template.description,
+                    configSchema=template.config.model_json_schema(),
+                    inputSchema=template.input.model_json_schema(),
+                    outputSchema=template.output.model_json_schema(),
+                )
+                for template in templates
+            ]
         )
-    
-    def add_agent(
-        self,
-        agent: Agent
-    ) -> None:
+
+    def add_agent(self, agent: Agent) -> None:
         """Add a agent to the server."""
         self._agent_manager.add_agent(agent=agent)
 
-    
     def agent(
         self,
         name: str,
         description: str,
         input: Type[BaseModel],
-        output: Type[BaseModel]
+        output: Type[BaseModel],
     ) -> Callable:
         """Decorator to register an agent.
 
         Args:
-            name: name for the agent 
+            name: name for the agent
             description: description of what the agent does
             input: agent run input model
             output: agent run output model
@@ -555,52 +549,52 @@ class FastMCP:
                 input=input,
                 output=output,
                 run_fn=func,
-                destroy_fn=None
+                destroy_fn=None,
             )
             self.add_agent(agent=agent)
             return func
 
         return decorator
-    
+
     async def list_agents(self, req: ListAgentsRequest) -> ListAgentsResult:
         agents = self._agent_manager.list_agents()
         return ListAgentsResult(
-            agents=[MCPAgent(
-                name=agent.name,
-                description=agent.description,
-                inputSchema=agent.input.model_json_schema(),
-                outputSchema=agent.output.model_json_schema()
-            ) for agent in agents]
+            agents=[
+                MCPAgent(
+                    name=agent.name,
+                    description=agent.description,
+                    inputSchema=agent.input.model_json_schema(),
+                    outputSchema=agent.output.model_json_schema(),
+                )
+                for agent in agents
+            ]
         )
-    
+
     async def create_agent(self, req: CreateAgentRequest) -> CreateAgentResult:
         agent = await self._agent_manager.create_agent(
             name=req.params.templateName,
             config=req.params.config,
-            context=self.get_context()
+            context=self.get_context(),
         )
         return CreateAgentResult(
             agent=MCPAgent(
                 name=agent.name,
                 description=agent.description,
                 inputSchema=agent.input.model_json_schema(),
-                outputSchema=agent.output.model_json_schema()
+                outputSchema=agent.output.model_json_schema(),
             )
         )
-    
+
     async def destroy_agent(self, req: DestroyAgentRequest) -> DestroyAgentResult:
         await self._agent_manager.destroy_agent(
-            name=req.params.name,
-            context=self.get_context()
+            name=req.params.name, context=self.get_context()
         )
         return DestroyAgentResult()
-        
+
     async def run_agent(self, req: RunAgentRequest) -> RunAgentResult:
         """Run an agent by name with arguments."""
         output = await self._agent_manager.run_agent(
-            name=req.params.name,
-            input=req.params.input,
-            context=self.get_context()
+            name=req.params.name, input=req.params.input, context=self.get_context()
         )
         return RunAgentResult(output=output)
 
@@ -789,9 +783,7 @@ class Context(BaseModel):
             progress_token=progress_token, progress=progress, total=total
         )
 
-    async def report_agent_run_progress(
-        self, delta: dict[str, Any]
-    ) -> None:
+    async def report_agent_run_progress(self, delta: dict[str, Any]) -> None:
         """Report progress for the agent run operation.
 
         Args:

@@ -1,15 +1,17 @@
-from mcp.server.fastmcp.agents import Agent
-from pydantic import BaseModel
 import anyio
 import click
-import mcp.types as types
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.agents import Agent
+from pydantic import BaseModel
+
 
 class Input(BaseModel):
     prompt: str
 
+
 class Output(BaseModel):
     text: str
+
 
 @click.command()
 @click.option("--port", default=8000, help="Port to listen on for SSE")
@@ -23,27 +25,25 @@ def main(port: int, transport: str) -> int:
     server = FastMCP("mcp-agent")
 
     # Use agent decorator
-    @server.agent('Someagent', 'This is just some agent', input=Input, output=Output)
+    @server.agent("Someagent", "This is just some agent", input=Input, output=Output)
     async def run_someagent(input: Input) -> Output:
-        agent = 'someagent' # some framework agent
-        return Output(
-            text=f"{agent}: {input.prompt} + cont."
-        )
-    
+        agent = "someagent"  # some framework agent
+        return Output(text=f"{agent}: {input.prompt} + cont.")
+
     async def run_anotheragent(input: Input) -> Output:
-        agent = 'anotheragent' # some framework agent
-        return Output(
-            text=f"{agent}: {input.prompt} + cont."
-        )
-    
+        agent = "anotheragent"  # some framework agent
+        return Output(text=f"{agent}: {input.prompt} + cont.")
+
     # Use add_agent
-    server.add_agent(agent=Agent(
-        name="Anotheragent",
-        description='This is just another agent',
-        input=Input,
-        output=Output,
-        run_fn=run_anotheragent
-    ))
+    server.add_agent(
+        agent=Agent(
+            name="Anotheragent",
+            description="This is just another agent",
+            input=Input,
+            output=Output,
+            run_fn=run_anotheragent,
+        )
+    )
 
     if transport == "sse":
         from mcp.server.sse import SseServerTransport

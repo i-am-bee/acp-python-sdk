@@ -7,11 +7,10 @@ import anyio
 import anyio.lowlevel
 import httpx
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
-from pydantic import BaseModel
-
 from opentelemetry import trace
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.baggage.propagation import W3CBaggagePropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from pydantic import BaseModel
 
 from mcp.shared.exceptions import McpError
 from mcp.types import (
@@ -228,13 +227,16 @@ class BaseSession(
         )
 
         with trace.get_tracer(__name__).start_as_current_span(jsonrpc_request.method):
-            meta = jsonrpc_request.params.get("_meta", {}) if jsonrpc_request.params is not None else {}
+            meta = (
+                jsonrpc_request.params.get("_meta", {})
+                if jsonrpc_request.params is not None
+                else {}
+            )
             W3CBaggagePropagator().inject(meta)
             TraceContextTextMapPropagator().inject(meta)
             if jsonrpc_request.params is None:
                 jsonrpc_request.params = {}
-            jsonrpc_request.params['_meta'] = meta
-
+            jsonrpc_request.params["_meta"] = meta
 
             # TODO: Support progress callbacks
 
@@ -318,9 +320,17 @@ class BaseSession(
                         on_complete=lambda r: self._in_flight.pop(r.request_id, None),
                     )
 
-                    ctx = TraceContextTextMapPropagator().extract(carrier=responder.request_meta)
-                    ctx = W3CBaggagePropagator().extract(responder.request_meta, context=ctx)
-                    with trace.get_tracer(__name__).start_span(validated_request.root.method, context=ctx, kind=trace.SpanKind.SERVER):
+                    ctx = TraceContextTextMapPropagator().extract(
+                        carrier=responder.request_meta
+                    )
+                    ctx = W3CBaggagePropagator().extract(
+                        responder.request_meta, context=ctx
+                    )
+                    with trace.get_tracer(__name__).start_span(
+                        validated_request.root.method,
+                        context=ctx,
+                        kind=trace.SpanKind.SERVER,
+                    ):
                         self._in_flight[responder.request_id] = responder
                         await self._received_request(responder)
 

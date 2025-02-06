@@ -14,5 +14,7 @@ class Agent(BaseModel):
     input: Type[BaseModel] = Field(description="Model for input")
     output: Type[BaseModel] = Field(description="Model for output")
 
-    run_fn: Callable[[dict[str, Any], Context], Awaitable[dict[str, Any]]] = Field(exclude=True)
+    run_fn: Callable[[dict[str, Any], Context], Awaitable[dict[str, Any]]] = Field(
+        exclude=True
+    )
     destroy_fn: Callable[[Context], Awaitable[None]] | None = Field(exclude=True)

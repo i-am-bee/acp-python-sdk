@@ -826,6 +826,7 @@ class DestroyAgentRequest(Request):
 
 class DestroyAgentResult(Result):
     """The server's response to an agent destruction."""
+
     pass
 
 

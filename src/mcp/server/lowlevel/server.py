@@ -95,12 +95,13 @@ class NotificationOptions:
         prompts_changed: bool = False,
         resources_changed: bool = False,
         tools_changed: bool = False,
-        agents_changed: bool = False
+        agents_changed: bool = False,
     ):
         self.prompts_changed = prompts_changed
         self.resources_changed = resources_changed
         self.tools_changed = tools_changed
         self.agents_changed = agents_changed
+
 
 class Server:
     def __init__(
@@ -397,10 +398,14 @@ class Server:
             return func
 
         return decorator
-    
 
     def list_agent_templates(self):
-        def decorator(func: Callable[[types.ListAgentTemplatesRequest], Awaitable[types.ListAgentTemplatesResult]]):
+        def decorator(
+            func: Callable[
+                [types.ListAgentTemplatesRequest],
+                Awaitable[types.ListAgentTemplatesResult],
+            ],
+        ):
             logger.debug("Registering handler for ListAgentTemplatesRequest")
 
             async def handler(req: types.ListAgentTemplatesRequest):
@@ -410,9 +415,13 @@ class Server:
             return func
 
         return decorator
-    
+
     def list_agents(self):
-        def decorator(func: Callable[[types.ListAgentsRequest], Awaitable[types.ListAgentsResult]]):
+        def decorator(
+            func: Callable[
+                [types.ListAgentsRequest], Awaitable[types.ListAgentsResult]
+            ],
+        ):
             logger.debug("Registering handler for ListAgentsRequest")
 
             async def handler(req: types.ListAgentsRequest):
@@ -422,9 +431,13 @@ class Server:
             return func
 
         return decorator
-    
+
     def create_agent(self):
-        def decorator(func: Callable[[types.CreateAgentRequest], Awaitable[types.CreateAgentResult]]):
+        def decorator(
+            func: Callable[
+                [types.CreateAgentRequest], Awaitable[types.CreateAgentResult]
+            ],
+        ):
             logger.debug("Registering handler for CreateAgentRequest")
 
             async def handler(req: types.CreateAgentRequest):
@@ -434,9 +447,13 @@ class Server:
             return func
 
         return decorator
-    
+
     def destroy_agent(self):
-        def decorator(func: Callable[[types.DestroyAgentRequest], Awaitable[types.DestroyAgentResult]]):
+        def decorator(
+            func: Callable[
+                [types.DestroyAgentRequest], Awaitable[types.DestroyAgentResult]
+            ],
+        ):
             logger.debug("Registering handler for DestroyAgentRequest")
 
             async def handler(req: types.DestroyAgentRequest):
@@ -458,9 +475,7 @@ class Server:
 
             async def handler(req: types.RunAgentRequest):
                 output = await func(req.params.name, (req.params.input or {}))
-                return types.ServerResult(
-                    types.RunAgentResult(output=output)
-                )
+                return types.ServerResult(types.RunAgentResult(output=output))
 
             self.request_handlers[types.RunAgentRequest] = handler
             return func
