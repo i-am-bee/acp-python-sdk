@@ -62,7 +62,7 @@ Issues = "https://github.com/i-am-bee/acp-python-sdk/issues"
 packages = ["src/mcp"]
 
 [tool.pyright]
-include = ["src/mcp", "tests"]
+include = ["src/mcp"]
 venvPath = "."
 venv = ".venv"
 
