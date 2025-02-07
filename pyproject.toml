@@ -1,5 +1,5 @@
 [project]
-name = "acp"
+name = "agentcommunicationprotocol"
 version = "0.0.1"
 description = "Agent Communication Protocol SDK"
 readme = "README.md"
