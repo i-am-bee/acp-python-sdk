@@ -1,9 +1,8 @@
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Type
+from typing import Any, Awaitable, Callable, Type
 
 from pydantic import BaseModel, ConfigDict, Field
 
-if TYPE_CHECKING:
-    from mcp.server.fastmcp.server import Context
+from mcp.server.fastmcp.context import Context
 
 
 class Agent(BaseModel):
