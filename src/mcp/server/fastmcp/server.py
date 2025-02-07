@@ -467,6 +467,7 @@ class FastMCP:
         config: Type[BaseModel],
         input: Type[BaseModel],
         output: Type[BaseModel],
+        **kwargs
     ) -> Callable:
         """Decorator to register an agent template.
 
@@ -493,6 +494,7 @@ class FastMCP:
                 input=input,
                 output=output,
                 create_fn=func,
+                **kwargs
             )
             self.add_agent_template(template)
             return func
@@ -511,6 +513,7 @@ class FastMCP:
                     configSchema=template.config.model_json_schema(),
                     inputSchema=template.input.model_json_schema(),
                     outputSchema=template.output.model_json_schema(),
+                    **(template.model_extra if template.model_extra else {})
                 )
                 for template in templates
             ]
@@ -526,6 +529,7 @@ class FastMCP:
         description: str,
         input: Type[BaseModel],
         output: Type[BaseModel],
+        **kwargs
     ) -> Callable:
         """Decorator to register an agent.
 
@@ -550,6 +554,7 @@ class FastMCP:
                 output=output,
                 run_fn=func,
                 destroy_fn=None,
+                **kwargs
             )
             self.add_agent(agent=agent)
             return func
@@ -565,6 +570,7 @@ class FastMCP:
                     description=agent.description,
                     inputSchema=agent.input.model_json_schema(),
                     outputSchema=agent.output.model_json_schema(),
+                    **(agent.model_extra if agent.model_extra else {})
                 )
                 for agent in agents
             ]

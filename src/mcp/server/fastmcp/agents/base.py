@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Type
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp.server import Context
@@ -19,3 +19,5 @@ class Agent(BaseModel):
         exclude=True
     )
     destroy_fn: Callable[["Context"], Awaitable[None]] | None = Field(exclude=True)
+
+    model_config = ConfigDict(extra="allow")

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Type
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from mcp.server.fastmcp.agents.base import Agent
 
@@ -21,3 +21,5 @@ class AgentTemplate(BaseModel):
     create_fn: Callable[[dict[str, Any], "Context"], Awaitable[Agent]] = Field(
         exclude=True
     )
+
+    model_config = ConfigDict(extra="allow")
