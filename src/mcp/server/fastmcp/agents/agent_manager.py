@@ -69,7 +69,7 @@ class AgentManager:
         if not template:
             raise AgentError(f"Unknown agent template: {name}")
 
-        agent = await template.create_fn(config, context)
+        agent = await template.create_fn(template.model_validate(config), context)
         existing = self._agents.get(agent.name)
         if existing:
             if self.warn_on_duplicate_agents:
@@ -104,6 +104,7 @@ class AgentManager:
             raise AgentError(f"Unknown agent: {name}")
 
         try:
-            return await agent.run_fn(input, context)
+            output = await agent.run_fn(agent.input.model_validate(input), context)
+            return output.model_dump()
         except Exception as e:
             raise AgentError(f"Error running agent {name}: {e}") from e

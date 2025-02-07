@@ -1,4 +1,4 @@
-from typing import Any, Awaitable, Callable, Type
+from typing import Awaitable, Callable, Type
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,7 +14,7 @@ class Agent(BaseModel):
     input: Type[BaseModel] = Field(description="Model for input")
     output: Type[BaseModel] = Field(description="Model for output")
 
-    run_fn: Callable[[dict[str, Any], "Context"], Awaitable[dict[str, Any]]] = Field(
+    run_fn: Callable[[BaseModel, "Context"], Awaitable[BaseModel]] = Field(
         exclude=True
     )
     destroy_fn: Callable[["Context"], Awaitable[None]] | None = Field(exclude=True)

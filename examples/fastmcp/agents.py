@@ -1,9 +1,10 @@
-from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
+
+from mcp.server.fastmcp import Context, FastMCP
+
 
 class Input(BaseModel):
     prompt: str
-
 
 class Output(BaseModel):
     text: str
@@ -16,7 +17,7 @@ mcp = FastMCP()
     input=Input,
     output=Output
 )
-def run_agent(input: Input) -> Output:
+async def run_agent(input: Input, ctx: Context) -> Output:
     agent = "Echoagent"
     return Output(text=f"{agent}: Your prompt was {input.prompt}")
 

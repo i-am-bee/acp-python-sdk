@@ -474,8 +474,7 @@ class Server:
             logger.debug("Registering handler for RunAgentRequest")
 
             async def handler(req: types.RunAgentRequest):
-                output = await func(req.params.name, (req.params.input or {}))
-                return types.ServerResult(types.RunAgentResult(output=output))
+                return types.ServerResult(await func(req))
 
             self.request_handlers[types.RunAgentRequest] = handler
             return func
