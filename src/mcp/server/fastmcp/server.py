@@ -481,8 +481,8 @@ class FastMCP:
         if callable(name):
             raise TypeError(
                 "The @agent_template decorator was used incorrectly. "
-                "Did you forget to call it? Use @agent_template()" + 
-                " instead of @agent_template"
+                "Did you forget to call it? Use @agent_template()"
+                + " instead of @agent_template"
             )
 
         def decorator(func: Callable) -> Callable:

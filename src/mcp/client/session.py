@@ -4,12 +4,13 @@ from typing import Any
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from pydantic import AnyUrl
 
+from mcp.shared.session import BaseSession
+from mcp.shared.version import SUPPORTED_PROTOCOL_VERSIONS
 from mcp.types import (
     LATEST_PROTOCOL_VERSION,
     CallToolRequest,
     CallToolRequestParams,
     CallToolResult,
-    CancelledNotification,
     ClientCapabilities,
     ClientNotification,
     ClientRequest,
@@ -25,32 +26,28 @@ from mcp.types import (
     DestroyAgentRequestParams,
     DestroyAgentResult,
     EmptyResult,
-    ErrorData,
     GetPromptRequest,
     GetPromptRequestParams,
     GetPromptResult,
     Implementation,
+    InitializedNotification,
     InitializeRequest,
     InitializeRequestParams,
     InitializeResult,
-    InitializedNotification,
-    JSONRPCError,
     JSONRPCMessage,
-    JSONRPCNotification,
-    JSONRPCRequest,
-    JSONRPCResponse,
-    ListAgentTemplatesRequest,
-    ListAgentTemplatesResult,
     ListAgentsRequest,
     ListAgentsResult,
+    ListAgentTemplatesRequest,
+    ListAgentTemplatesResult,
     ListPromptsRequest,
     ListPromptsResult,
-    ListResourceTemplatesRequest,
-    ListResourceTemplatesResult,
     ListResourcesRequest,
     ListResourcesResult,
+    ListResourceTemplatesRequest,
+    ListResourceTemplatesResult,
     ListToolsRequest,
     ListToolsResult,
+    LoggingLevel,
     PingRequest,
     ProgressNotification,
     ProgressNotificationParams,
@@ -58,7 +55,6 @@ from mcp.types import (
     ReadResourceRequest,
     ReadResourceRequestParams,
     ReadResourceResult,
-    RequestParams,
     ResourceReference,
     RootsCapability,
     RootsListChangedNotification,
@@ -67,17 +63,13 @@ from mcp.types import (
     RunAgentResult,
     ServerNotification,
     ServerRequest,
-    ServerResult,
     SetLevelRequest,
     SetLevelRequestParams,
     SubscribeRequest,
     SubscribeRequestParams,
     UnsubscribeRequest,
     UnsubscribeRequestParams,
-    LoggingLevel
 )
-from mcp.shared.session import BaseSession
-from mcp.shared.version import SUPPORTED_PROTOCOL_VERSIONS
 
 
 class ClientSession(
