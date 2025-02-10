@@ -179,8 +179,9 @@ class Server:
             )
 
         # Set agent capabilities if handler exists
-        if types.ListAgentTemplatesRequest in self.request_handlers:
+        if types.ListAgentsRequest in self.request_handlers:
             agents_capability = types.AgentsCapability(
+                templates=types.ListAgentTemplatesRequest in self.request_handlers,
                 listChanged=notification_options.agents_changed
             )
 
