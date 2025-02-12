@@ -95,7 +95,7 @@ class Context(BaseModel):
             progress_token=progress_token, progress=progress, total=total
         )
 
-    async def report_agent_run_progress(self, delta: dict[str, Any]) -> None:
+    async def report_agent_run_progress(self, delta: BaseModel) -> None:
         """Report progress for the agent run operation.
 
         Args:
@@ -112,7 +112,7 @@ class Context(BaseModel):
             return
 
         await self.request_context.session.send_agent_run_progress(
-            progress_token=progress_token, delta=delta
+            progress_token=progress_token, delta=delta.model_dump()
         )
 
     async def read_resource(self, uri: str | AnyUrl) -> ReadResourceContents:
